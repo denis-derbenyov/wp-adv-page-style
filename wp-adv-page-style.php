@@ -53,10 +53,37 @@ function codex_custom_init()
  */
 add_action( 'add_meta_boxes', 'advps_add_custom_box' );
 function advps_add_custom_box(){
-    add_meta_box('advps_page_template', __('Page Template','advps'),'advps_inner_custom_box','adv-page-style' );
+    add_meta_box('advps_page_template', __('Page Template','advps'),'advps_inner_custom_box','adv-page-style','normal','default' );
 }
 function advps_inner_custom_box($post){
-    echo '<pre>';
-    var_dump($post);
-    echo '</pre>';
+    $advps_datas = get_post_meta($post->ID, 'advps_datas',true);
+    // Use nonce for verification
+    wp_nonce_field( plugin_basename( __FILE__ ), 'advps_noncename' );
+    echo '<input type="text" id="advps_field" name="advps_field" value="',$advps_datas,'" size="25" />';
+}
+
+/* Do something with the data entered */
+add_action( 'save_post', 'advps_save_postdata' );
+function advps_save_postdata($post_id){
+    // verify if this is an auto save routine. 
+    // If it is our form has not been submitted, so we dont want to do anything
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
+        return;
+    
+    // verify this came from the our screen and with proper authorization,
+    // because save_post can be triggered at other times
+    if ( !wp_verify_nonce( $_POST['advps_noncename'], plugin_basename( __FILE__ ) ) )
+        return;
+    
+     // Check permissions
+    if ( 'page' == $_POST['post_type'] ) {
+        if ( !current_user_can( 'edit_page', $post_id ) )
+            return;
+    }
+    else{
+        if ( !current_user_can( 'edit_post', $post_id ) )
+            return;
+    }
+    $mydata = $_POST['advps_field'];
+    update_post_meta($post_id, 'advps_datas', $mydata);
 }
